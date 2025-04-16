@@ -6,34 +6,78 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  AWS_REGION: ap-south-1
-  ECR_REPOSITORY: traffic-dashboard
-  ECS_CLUSTER: traffic-dashboard
-  ECS_SERVICE: traffic-dashboard
-
 jobs:
-  build-and-test:
+  test-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+          
+      - name: Run Python tests
+        run: |
+          python -m pytest test_app.py -v
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: infra-alerting-dashboard/package-lock.json
           
-      - name: Install dependencies
-        run: npm install
+      - name: Install Node.js dependencies
+        working-directory: infra-alerting-dashboard
+        run: npm ci
         
-      - name: Run tests
-        run: npm test
+      - name: Run React tests
+        working-directory: infra-alerting-dashboard
+        run: npm test -- --watchAll=false
         
-      - name: Build
+      - name: Build React app
+        working-directory: infra-alerting-dashboard
         run: npm run build
+
+  build-docker:
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
         
+      - name: Build Backend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: traffic-dashboard-backend:latest
+          
+      - name: Build Frontend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./infra-alerting-dashboard
+          file: ./infra-alerting-dashboard/Dockerfile
+          push: false
+          tags: traffic-dashboard-frontend:latest
+
   docker-build:
-    needs: build-and-test
+    needs: build-docker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
