@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Production
+/build
+/dist
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.env/
+.venv/
+
+# Large data files
+*.pbf
+*.osm
+*.war
+data/
+osm-data/
+osrm-server/
+
+# AWS
+task-definition.json
+task-role-trust-policy.json
+task-execution-assume-role.json
+
+# Jenkins
+jenkins.war
+Jenkinsfile
+jenkins-config.yaml
+Dockerfile.jenkins
+
+# Documentation
+CODE_DOCUMENTATION.md
+MONITORING.md
+
+# Cache
+cache/
+
+# Build artifacts
+build/
+dist/ 

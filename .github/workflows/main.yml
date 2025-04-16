@@ -1,0 +1,44 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          cd infra-alerting-dashboard
+          npm install
+          
+      - name: Run tests
+        run: |
+          cd infra-alerting-dashboard
+          npm test
+          
+      - name: Build React app
+        run: |
+          cd infra-alerting-dashboard
+          npm run build
+
+  build-docker:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Build Docker image
+        run: |
+          cd infra-alerting-dashboard
+          docker build -t traffic-dashboard:latest . 
