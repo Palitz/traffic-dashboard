@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    ports:
+      - "8081:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    environment:
+      - JENKINS_ADMIN_ID=admin
+      - JENKINS_ADMIN_PASSWORD=admin123
+      - JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
+    restart: unless-stopped
+
+  osrm:
+    image: osrm/osrm-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./osm-data:/data
+    environment:
+      - OSRM_THREADS=4
+      - OSRM_MAX_TABLE_SIZE=1000
+      # Smaller bounding box for faster processing
+      - OSRM_BBOX=13.0827,80.2707,13.1000,80.2800
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    command: >
+      sh -c "
+        osrm-extract -p /opt/car.lua /data/chennai/chennai.osm &&
+        osrm-routed --algorithm mld /data/chennai/chennai.osrm
+      "
+
+volumes:
+  jenkins_home: 

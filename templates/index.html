@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chennai Traffic Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8 text-blue-600">Chennai Traffic Predictor</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Input Form -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-semibold mb-4">Route Details</h2>
+                <form id="routeForm" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700">Start Location</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="startLat" step="0.0001" placeholder="Latitude" 
+                                   class="w-full p-2 border rounded" value="13.0827">
+                            <input type="number" id="startLon" step="0.0001" placeholder="Longitude" 
+                                   class="w-full p-2 border rounded" value="80.2707">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700">End Location</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="endLat" step="0.0001" placeholder="Latitude" 
+                                   class="w-full p-2 border rounded" value="13.0067">
+                            <input type="number" id="endLon" step="0.0001" placeholder="Longitude" 
+                                   class="w-full p-2 border rounded" value="80.2207">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" 
+                            class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors">
+                        Predict Traffic
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Results -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-semibold mb-4">Prediction Results</h2>
+                <div id="results" class="space-y-4">
+                    <div class="text-center text-gray-500">
+                        Enter route details to see traffic prediction
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map -->
+        <div class="mt-8 bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-4">Route Map</h2>
+            <div id="map" class="h-96 rounded-lg"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([13.0827, 80.2707], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Handle form submission
+        document.getElementById('routeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const startLat = document.getElementById('startLat').value;
+            const startLon = document.getElementById('startLon').value;
+            const endLat = document.getElementById('endLat').value;
+            const endLon = document.getElementById('endLon').value;
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        start_lat: startLat,
+                        start_lon: startLon,
+                        end_lat: endLat,
+                        end_lon: endLon
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update results
+                    document.getElementById('results').innerHTML = `
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="font-semibold">Traffic Level:</span>
+                                <span class="text-${data.prediction.traffic_level === 'Heavy' ? 'red' : 
+                                                   data.prediction.traffic_level === 'Moderate' ? 'yellow' : 'green'}-600">
+                                    ${data.prediction.traffic_level}
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-semibold">Estimated Time:</span>
+                                <span>${data.prediction.estimated_time_minutes} minutes</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-semibold">Total Distance:</span>
+                                <span>${data.prediction.total_distance_km} km</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Update map
+                    map.eachLayer((layer) => {
+                        if (layer instanceof L.Polyline) {
+                            map.removeLayer(layer);
+                        }
+                    });
+                    
+                    L.polyline(data.route, {
+                        color: 'blue',
+                        weight: 3,
+                        opacity: 0.8
+                    }).addTo(map);
+                    
+                    map.fitBounds(L.polyline(data.route).getBounds());
+                    
+                } else {
+                    document.getElementById('results').innerHTML = `
+                        <div class="text-red-600">
+                            Error: ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('results').innerHTML = `
+                    <div class="text-red-600">
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html> 
